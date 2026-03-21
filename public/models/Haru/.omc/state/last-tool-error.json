@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"uv run python -c \\\"\\nimport requests\\nr = requests.post('http://localhost:8000/api/auth/login', json={'email':'test@aivalink.com','password':'Test1234!'})\\ntoken = r.json()['access_token']...",
+  "error": "Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 2, in <module>\nModuleNotFoundError: No module named 'requests'",
+  "timestamp": "2026-03-21T01:14:46.776Z",
+  "retry_count": 1
+}

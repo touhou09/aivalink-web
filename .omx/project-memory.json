@@ -1,0 +1,17 @@
+{
+  "notes": [
+    {
+      "category": "build",
+      "content": "2026-03-19 known active failures from live Vite log /private/tmp/aivalink-frontend.log: src/pages/VTuberPage.tsx had HMR parse errors around the connectWs callback and repeated runtime errors 'useEffect must not return anything besides a function' plus 'TypeError: destroy is not a function'. The file currently has duplicated websocket connection effects, and one effect returns the Promise from connectWs() as cleanup. This likely causes repeated websocket connect/disconnect churn that matches backend log spikes.",
+      "timestamp": "2026-03-19T14:19:49.723Z"
+    }
+  ],
+  "directives": [
+    {
+      "directive": "When working on VTuber runtime issues, inspect /private/tmp/aivalink-frontend.log first. Treat duplicated connectWs effects and returning a Promise from useEffect cleanup in src/pages/VTuberPage.tsx as the first suspect; coordinate with the sibling backend project aivalink because backend logs already show repeated websocket reconnects and a separate DB schema issue.",
+      "priority": "high",
+      "context": "runtime debugging handoff",
+      "timestamp": "2026-03-19T14:19:49.727Z"
+    }
+  ]
+}
