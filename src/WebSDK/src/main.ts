@@ -46,6 +46,9 @@ export function initializeLive2D(): void {
     console.log('Setting up getLAppAdapter function');
     (window as any).getLAppAdapter = () => LAppAdapter.getInstance();
   }
+  // Expose LAppDelegate and LAppLive2DManager for view/model control
+  (window as any).getLAppDelegate = () => LAppDelegate.getInstance();
+  (window as any).getLAppLive2DManager = () => LAppLive2DManager.getInstance();
 
   if ((window as any).api?.setIgnoreMouseEvent) {
     const parent = document.getElementById("live2d");

@@ -77,29 +77,29 @@ export default function Live2DCanvas({ modelUrl, emotion, audioAnalyser }: Props
 
   // Lip sync driven by audioAnalyser
   useEffect(() => {
-    if (!audioAnalyser) return;
+    if (!audioAnalyser) {
+      console.log('[Live2D] Lip sync: no analyser yet');
+      return;
+    }
+    console.log('[Live2D] Lip sync: started');
 
     const dataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
 
     const update = () => {
       audioAnalyser.getByteFrequencyData(dataArray);
       const avg = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
-      const mouthOpen = Math.min(avg / 128, 1);
+      const mouthOpen = Math.min(avg / 80, 1); // more sensitive
 
       try {
-        const adapter = (window as any).getLAppAdapter?.();
-        const model = adapter?.getModel();
-        if (model?._wavFileHandler) {
-          // Set the lip sync value directly via the model's lip sync IDs
-          // The WebSDK handles lip sync through _wavFileHandler in update(),
-          // but for external audio we can set parameter values directly
+        const model = getModel();
+        if (model?._model) {
           const lipSyncIds = model._lipSyncIds;
-          if (lipSyncIds && model._model) {
+          if (lipSyncIds) {
             for (let i = 0; i < lipSyncIds.getSize(); ++i) {
               model._model.addParameterValueById(
                 lipSyncIds.at(i),
                 mouthOpen,
-                4.0,
+                0.8,
               );
             }
           }
@@ -121,69 +121,84 @@ export default function Live2DCanvas({ modelUrl, emotion, audioAnalyser }: Props
     };
   }, [audioAnalyser]);
 
-  // Drag + Zoom via CSS transform on canvas
+  // Drag + Zoom via WebGL model matrix (no CSS transform)
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
-  const transformRef = useRef({ x: 0, y: 0, scale: 1.0 });
+  const modelStartPos = useRef({ x: 0, y: 0 });
 
-  // Load saved transform
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('aivalink-live2d-transform');
-      if (saved) {
-        transformRef.current = JSON.parse(saved);
-        applyCSS();
-      }
-    } catch { /* */ }
-  }, []);
-
-  const applyCSS = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const { x, y, scale } = transformRef.current;
-    canvas.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-    canvas.style.transformOrigin = 'center center';
+  const getModel = () => {
+    const manager = (window as any).getLAppLive2DManager?.();
+    return manager?.getModel?.(0) || null;
   };
 
-  const saveTransform = () => {
-    localStorage.setItem('aivalink-live2d-transform', JSON.stringify(transformRef.current));
+  const getView = () => {
+    try {
+      const delegate = (window as any).getLAppDelegate?.();
+      // Access view via public getter or direct property
+      return delegate?._view || delegate?.getView?.() || null;
+    } catch { return null; }
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button === 0) {
-      isDraggingRef.current = true;
-      dragStartRef.current = { x: e.clientX, y: e.clientY };
+    if (e.button !== 0) return;
+    isDraggingRef.current = true;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    dragStartRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+    const model = getModel();
+    const view = getView();
+    console.log('[Live2D] pointerDown - model:', !!model, 'view:', !!view, 'modelMatrix:', !!model?._modelMatrix);
+
+    if (model?._modelMatrix) {
+      const m = model._modelMatrix.getArray();
+      modelStartPos.current = { x: m[12], y: m[13] };
     }
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDraggingRef.current) return;
-    const dx = e.clientX - dragStartRef.current.x;
-    const dy = e.clientY - dragStartRef.current.y;
-    transformRef.current.x += dx;
-    transformRef.current.y += dy;
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
-    applyCSS();
+    const canvas = canvasRef.current;
+    const model = getModel();
+    const view = getView();
+    if (!canvas || !model || !view) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+    const scale = canvas.width / canvas.clientWidth;
+
+    // Convert screen delta to model space delta
+    const startModelX = view._deviceToScreen.transformX(dragStartRef.current.x * scale);
+    const startModelY = view._deviceToScreen.transformY(dragStartRef.current.y * scale);
+    const currentModelX = view._deviceToScreen.transformX(currentX * scale);
+    const currentModelY = view._deviceToScreen.transformY(currentY * scale);
+
+    const dx = currentModelX - startModelX;
+    const dy = currentModelY - startModelY;
+
+    // Apply to model matrix
+    const m = model._modelMatrix.getArray();
+    m[12] = modelStartPos.current.x + dx;
+    m[13] = modelStartPos.current.y + dy;
   };
 
   const handlePointerUp = () => {
-    if (isDraggingRef.current) {
-      isDraggingRef.current = false;
-      saveTransform();
-    }
+    isDraggingRef.current = false;
   };
 
-  // Wheel zoom via native event listener (non-passive)
+  // Wheel zoom via native event (non-passive)
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      const model = getModel();
+      if (!model?._modelMatrix) return;
+
       const delta = e.deltaY > 0 ? 0.95 : 1.05;
-      transformRef.current.scale *= delta;
-      transformRef.current.scale = Math.max(0.1, Math.min(5.0, transformRef.current.scale));
-      applyCSS();
-      saveTransform();
+      model._modelMatrix.scaleRelative(delta, delta);
     };
     container.addEventListener('wheel', onWheel, { passive: false });
     return () => container.removeEventListener('wheel', onWheel);
@@ -200,7 +215,7 @@ export default function Live2DCanvas({ modelUrl, emotion, audioAnalyser }: Props
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
-      cursor={isDraggingRef.current ? 'grabbing' : 'grab'}
+      cursor="grab"
     >
       <canvas
         ref={canvasRef}
