@@ -89,7 +89,7 @@ export const MOCConsistencyValidationEnable = true;
 
 // デバッグ用ログの表示オプション
 // 调试用日志显示选项
-export const DebugLogEnable = false;
+export const DebugLogEnable = true;
 export const DebugTouchLogEnable = false;
 
 // Frameworkから出力するログのレベル設定

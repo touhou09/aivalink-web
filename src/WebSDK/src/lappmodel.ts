@@ -551,14 +551,12 @@ export class LAppModel extends CubismUserModel {
 
     //--------------------------------------------------------------------------
     this._model.loadParameters(); // 前回セーブされた状態をロード
-    if (this._motionManager.isFinished()) {
-      // Idle auto-play disabled — motions are triggered by emotion tags only
-    } else {
-      motionUpdated = this._motionManager.updateMotion(
-        this._model,
-        deltaTimeSeconds
-      ); // モーションを更新
-    }
+    // Always call updateMotion so triggered motions render properly
+    // Don't auto-start idle — emotion motions are triggered externally
+    motionUpdated = this._motionManager.updateMotion(
+      this._model,
+      deltaTimeSeconds
+    );
     this._model.saveParameters(); // 状態を保存
     //--------------------------------------------------------------------------
 

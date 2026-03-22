@@ -121,8 +121,87 @@ export default function Live2DCanvas({ modelUrl, emotion, audioAnalyser }: Props
     };
   }, [audioAnalyser]);
 
+  // Drag + Zoom via CSS transform on canvas
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const transformRef = useRef({ x: 0, y: 0, scale: 1.0 });
+
+  // Load saved transform
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('aivalink-live2d-transform');
+      if (saved) {
+        transformRef.current = JSON.parse(saved);
+        applyCSS();
+      }
+    } catch { /* */ }
+  }, []);
+
+  const applyCSS = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const { x, y, scale } = transformRef.current;
+    canvas.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    canvas.style.transformOrigin = 'center center';
+  };
+
+  const saveTransform = () => {
+    localStorage.setItem('aivalink-live2d-transform', JSON.stringify(transformRef.current));
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.button === 0) {
+      isDraggingRef.current = true;
+      dragStartRef.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingRef.current) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    transformRef.current.x += dx;
+    transformRef.current.y += dy;
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    applyCSS();
+  };
+
+  const handlePointerUp = () => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      saveTransform();
+    }
+  };
+
+  // Wheel zoom via native event listener (non-passive)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.95 : 1.05;
+      transformRef.current.scale *= delta;
+      transformRef.current.scale = Math.max(0.1, Math.min(5.0, transformRef.current.scale));
+      applyCSS();
+      saveTransform();
+    };
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
+  }, []);
+
   return (
-    <Box ref={containerRef} position="relative" w="100%" h="100%">
+    <Box
+      ref={containerRef}
+      position="relative"
+      w="100%"
+      h="100%"
+      overflow="hidden"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      cursor={isDraggingRef.current ? 'grabbing' : 'grab'}
+    >
       <canvas
         ref={canvasRef}
         id="canvas"

@@ -1,4 +1,3 @@
-import fs from 'fs'
 import path from 'path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -14,13 +13,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    https: {
-      key: fs.readFileSync('/tmp/aivalink-key.pem'),
-      cert: fs.readFileSync('/tmp/aivalink-cert.pem'),
-    },
-    hmr: {
-      host: '192.168.55.100',
-    },
+    allowedHosts: ['aivalink.dororong.dev', 'localhost'],
   },
   optimizeDeps: {
     exclude: ['onnxruntime-web'],

@@ -100,6 +100,7 @@ export default function VTuberPage() {
     });
 
     socket.on('emotion', (msg) => {
+      console.log('[VTuber] emotion received:', msg.data);
       setCurrentEmotion(msg.data.emotion as string);
     });
 
@@ -272,7 +273,12 @@ export default function VTuberPage() {
               offset += chunk.length;
             }
             const wavBuffer = float32ToWav(merged, audioCtx.sampleRate);
-            const base64 = btoa(String.fromCharCode(...new Uint8Array(wavBuffer)));
+            const bytes = new Uint8Array(wavBuffer);
+            let binary = '';
+            for (let j = 0; j < bytes.length; j++) {
+              binary += String.fromCharCode(bytes[j]);
+            }
+            const base64 = btoa(binary);
             ws?.sendAudioInput(base64);
             console.log(`[VAD] Speech sent: ${(totalLength / 16000).toFixed(1)}s`);
 
