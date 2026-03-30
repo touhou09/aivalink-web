@@ -9,6 +9,8 @@ export default defineConfig({
     alias: {
       '@framework': path.resolve(__dirname, './src/WebSDK/Framework/src'),
       '@cubismsdksamples': path.resolve(__dirname, './src/WebSDK/src'),
+      // onnxruntime-web CJS require workaround for Vite 8
+      'onnxruntime-web/wasm': path.resolve(__dirname, 'node_modules/onnxruntime-web/dist/ort.bundle.min.mjs'),
     },
   },
   server: {
@@ -16,6 +18,6 @@ export default defineConfig({
     allowedHosts: ['aivalink.dororong.dev', 'localhost'],
   },
   optimizeDeps: {
-    exclude: ['onnxruntime-web'],
+    include: ['onnxruntime-web'],
   },
 })
