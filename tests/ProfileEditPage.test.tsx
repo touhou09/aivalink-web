@@ -22,7 +22,7 @@ describe('ProfileEditPage', () => {
   beforeEach(() => {
     mockPatch.mockReset()
     localStorage.clear()
-    localStorage.setItem('access_token', 'token')
+    localStorage.setItem('auth_session', 'active')
     useAuthStore.setState({
       isAuthenticated: true,
       user: {

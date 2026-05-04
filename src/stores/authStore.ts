@@ -17,18 +17,16 @@ interface AuthState {
   logout: () => void;
   loadUser: () => Promise<void>;
   completeOAuthCallback: () => Promise<void>;
-  setTokens: (access: string, refresh: string) => void;
   setUser: (user: AuthUser | null) => void;
 }
 
-const hasStoredSession = () =>
-  Boolean(localStorage.getItem('access_token') || localStorage.getItem(AUTH_SESSION_KEY));
+const hasStoredSession = () => Boolean(localStorage.getItem(AUTH_SESSION_KEY));
 
 const markAuthenticated = () => localStorage.setItem(AUTH_SESSION_KEY, 'active');
 const clearStoredAuth = () => {
+  localStorage.removeItem(AUTH_SESSION_KEY);
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
-  localStorage.removeItem(AUTH_SESSION_KEY);
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -37,10 +35,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: false,
 
   login: async (email, password) => {
-    const res = await client.post('/auth/login', { email, password });
-    const { access_token, refresh_token } = res.data;
-    localStorage.setItem('access_token', access_token);
-    localStorage.setItem('refresh_token', refresh_token);
+    await client.post('/auth/login', { email, password });
     markAuthenticated();
     set({ isAuthenticated: true });
   },
@@ -55,8 +50,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    const refreshToken = localStorage.getItem('refresh_token');
-    client.post('/auth/logout', refreshToken ? { refresh_token: refreshToken } : {}).catch(() => {});
+    client.post('/auth/logout', {}).catch(() => {});
     clearStoredAuth();
     set({ isAuthenticated: false, user: null });
   },
@@ -84,13 +78,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       set({ loading: false });
     }
-  },
-
-  setTokens: (access, refresh) => {
-    localStorage.setItem('access_token', access);
-    localStorage.setItem('refresh_token', refresh);
-    markAuthenticated();
-    set({ isAuthenticated: true });
   },
 
   setUser: (user) => {

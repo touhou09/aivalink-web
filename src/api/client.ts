@@ -2,6 +2,26 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const AUTH_SESSION_KEY = 'auth_session';
+const CSRF_COOKIE_NAME = 'csrf_token';
+
+function readCookie(name: string) {
+  return document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(name + '='))
+    ?.slice(name.length + 1);
+}
+
+function csrfHeaderValue() {
+  const token = readCookie(CSRF_COOKIE_NAME);
+  return token ? decodeURIComponent(token) : undefined;
+}
+
+function clearStoredAuth() {
+  localStorage.removeItem(AUTH_SESSION_KEY);
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+}
 
 const client = axios.create({
   baseURL: API_BASE + '/api',
@@ -10,9 +30,12 @@ const client = axios.create({
 });
 
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = 'Bearer ' + token;
+  const method = (config.method || 'get').toUpperCase();
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    const csrfToken = csrfHeaderValue();
+    if (csrfToken) {
+      config.headers['X-CSRF-Token'] = csrfToken;
+    }
   }
   // Ensure trailing slash to avoid 307 redirects from FastAPI
   if (config.url && !config.url.endsWith('/') && !config.url.includes('?')) {
@@ -27,25 +50,19 @@ client.interceptors.response.use(
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      const refreshToken = localStorage.getItem('refresh_token');
       try {
-        const res = await axios.post(
+        await axios.post(
           API_BASE + '/api/auth/refresh/',
-          refreshToken ? { refresh_token: refreshToken } : {},
-          { withCredentials: true },
+          {},
+          {
+            withCredentials: true,
+            headers: csrfHeaderValue() ? { 'X-CSRF-Token': csrfHeaderValue() } : undefined,
+          },
         );
-        const { access_token, refresh_token: newRefresh } = res.data;
-        if (access_token && newRefresh) {
-          localStorage.setItem('access_token', access_token);
-          localStorage.setItem('refresh_token', newRefresh);
-          originalRequest.headers.Authorization = 'Bearer ' + access_token;
-        }
         localStorage.setItem(AUTH_SESSION_KEY, 'active');
         return client(originalRequest);
       } catch {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem(AUTH_SESSION_KEY);
+        clearStoredAuth();
         window.location.href = '/login';
       }
     }
@@ -53,5 +70,5 @@ client.interceptors.response.use(
   }
 );
 
-export { API_BASE, AUTH_SESSION_KEY };
+export { API_BASE, AUTH_SESSION_KEY, csrfHeaderValue };
 export default client;
