@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import DashboardPage from './pages/DashboardPage';
+import ProfileEditPage from './pages/ProfileEditPage';
 import CharacterEditPage from './pages/CharacterEditPage';
 import SettingsLLMPage from './pages/SettingsLLMPage';
 import SettingsTTSPage from './pages/SettingsTTSPage';
@@ -21,6 +22,7 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/profile/edit" element={<ProtectedRoute><ProfileEditPage /></ProtectedRoute>} />
         <Route path="/characters/new" element={<ProtectedRoute><CharacterEditPage /></ProtectedRoute>} />
         <Route path="/characters/:id/edit" element={<ProtectedRoute><CharacterEditPage /></ProtectedRoute>} />
         <Route path="/settings/llm" element={<ProtectedRoute><SettingsLLMPage /></ProtectedRoute>} />

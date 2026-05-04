@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, vi } from 'vitest'
 import { VTuberWebSocket } from '../src/lib/websocket'
 
 // Mock WebSocket
@@ -7,7 +7,7 @@ class MockWebSocket {
   readyState = MockWebSocket.OPEN
   url: string
   onopen: (() => void) | null = null
-  onmessage: ((e: any) => void) | null = null
+  onmessage: ((e: MessageEvent<string>) => void) | null = null
   onclose: (() => void) | null = null
   onerror: (() => void) | null = null
   sent: string[] = []

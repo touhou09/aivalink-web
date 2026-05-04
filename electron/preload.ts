@@ -12,5 +12,5 @@ if (process.contextIsolated) {
   }
 } else {
   window.electron = electronAPI;
-  (window as any).api = { isElectron: true };
+  (window as Window & { api?: { isElectron: boolean } }).api = { isElectron: true };
 }

@@ -1,15 +1,23 @@
 import { create } from 'zustand';
 import client from '../api/client';
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  display_name: string;
+  avatar_url?: string | null;
+}
+
 interface AuthState {
   isAuthenticated: boolean;
-  user: { id: string; email: string; display_name: string } | null;
+  user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
   loadUser: () => Promise<void>;
   setTokens: (access: string, refresh: string) => void;
+  setUser: (user: AuthUser | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -63,5 +71,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('access_token', access);
     localStorage.setItem('refresh_token', refresh);
     set({ isAuthenticated: true });
+  },
+
+  setUser: (user) => {
+    set({ user, isAuthenticated: Boolean(user) || !!localStorage.getItem('access_token') });
   },
 }));

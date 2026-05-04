@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Box, Button, Container, Heading, SimpleGrid, Text, VStack, Badge, HStack,
+  Avatar, Box, Button, Container, Heading, SimpleGrid, Text, VStack, Badge, HStack,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -28,11 +28,14 @@ export default function DashboardPage() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
+  const user = useAuthStore((s) => s.user);
+  const loadUser = useAuthStore((s) => s.loadUser);
 
   useEffect(() => {
+    loadUser().catch(() => {});
     client.get('/characters').then((r) => setCharacters(Array.isArray(r.data) ? r.data : r.data.items || [])).catch(() => {});
     client.get('/instances').then((r) => setInstances(Array.isArray(r.data) ? r.data : r.data.items || [])).catch(() => {});
-  }, []);
+  }, [loadUser]);
 
   const getInstanceStatus = (charId: string) => {
     const inst = instances.find((i) => i.character_id === charId);
@@ -66,12 +69,30 @@ export default function DashboardPage() {
       <HStack justify="space-between" mb={8}>
         <Heading size="lg">{t('dashboard.title')}</Heading>
         <HStack>
+          <Button size="sm" variant="outline" onClick={() => navigate('/profile/edit')}>
+            {t('dashboard.profile')}
+          </Button>
           <Button size="sm" onClick={() => navigate('/settings/llm')}>{t('dashboard.settings')}</Button>
           <Button size="sm" variant="outline" onClick={() => { logout(); navigate('/login'); }}>
             {t('dashboard.logout')}
           </Button>
         </HStack>
       </HStack>
+
+      <Box mb={8} p={5} borderWidth={1} borderRadius="lg">
+        <HStack justify="space-between" align={{ base: 'start', md: 'center' }} spacing={4} flexDir={{ base: 'column', md: 'row' }}>
+          <HStack spacing={4} align="center">
+            <Avatar name={user?.display_name || user?.email || 'User'} src={user?.avatar_url || undefined} />
+            <VStack align="start" spacing={1}>
+              <Text fontWeight="semibold">{user?.display_name || t('profile.emptyName')}</Text>
+              <Text fontSize="sm" color="gray.500">{user?.email || t('profile.emptyEmail')}</Text>
+            </VStack>
+          </HStack>
+          <Button colorScheme="blue" variant="outline" onClick={() => navigate('/profile/edit')}>
+            {t('profile.editCta')}
+          </Button>
+        </HStack>
+      </Box>
 
       <HStack justify="space-between" mb={4}>
         <Heading size="md">{t('dashboard.characters')}</Heading>

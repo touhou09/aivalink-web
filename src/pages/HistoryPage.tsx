@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Box, Button, Container, Heading, VStack, Text, Badge, HStack,
 } from '@chakra-ui/react';
@@ -23,7 +23,7 @@ export default function HistoryPage() {
   const [offset, setOffset] = useState(0);
   const limit = 50;
 
-  const loadMessages = async (currentOffset: number) => {
+  const loadMessages = useCallback(async (currentOffset: number) => {
     try {
       const res = await client.get(`/conversations/${characterId}?limit=${limit}&offset=${currentOffset}`);
       const data = res.data;
@@ -36,9 +36,9 @@ export default function HistoryPage() {
     } catch {
       // handle error
     }
-  };
+  }, [characterId]);
 
-  useEffect(() => { loadMessages(0); }, [characterId]);
+  useEffect(() => { loadMessages(0); }, [loadMessages]);
 
   const handleLoadMore = () => {
     const newOffset = offset + limit;

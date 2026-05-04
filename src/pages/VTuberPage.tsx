@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  Box, Button, Flex, HStack, Input, Text, VStack,
+  Badge, Box, Button, Flex, HStack, Input, Text, VStack,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -22,20 +22,28 @@ export default function VTuberPage() {
 
   const [input, setInput] = useState('');
   const [currentEmotion, setCurrentEmotion] = useState<string>('neutral');
+  const [lastCompanionCue, setLastCompanionCue] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, currentResponse]);
 
-  // Listen for emotion events from WebSocket handler
   useEffect(() => {
     const handler = (e: Event) => {
       setCurrentEmotion((e as CustomEvent).detail as string);
     };
     window.addEventListener('aiva:emotion', handler);
     return () => window.removeEventListener('aiva:emotion', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { text?: string };
+      if (detail?.text) setLastCompanionCue(detail.text);
+    };
+    window.addEventListener('aiva:idle-reaction', handler);
+    return () => window.removeEventListener('aiva:idle-reaction', handler);
   }, []);
 
   const handleSend = useCallback(() => {
@@ -57,10 +65,10 @@ export default function VTuberPage() {
   }, [micOn, startMic, stopMic]);
 
   const connected = wsState === 'open';
+  const emotionLabel = t(`vtuber.emotion.${currentEmotion}`, { defaultValue: currentEmotion });
 
   return (
     <Flex h="100vh">
-      {/* Live2D Canvas Area - 70% */}
       <Box flex="7" bg="gray.900" position="relative">
         <Live2DCanvas
           modelUrl={characterInfo?.live2d_model}
@@ -86,7 +94,6 @@ export default function VTuberPage() {
             <Text fontSize="sm">{characterInfo.name}</Text>
           </Box>
         )}
-        {/* AI State indicator */}
         {connected && aiState !== 'idle' && (
           <Box
             position="absolute"
@@ -116,8 +123,33 @@ export default function VTuberPage() {
         )}
       </Box>
 
-      {/* Chat Panel - 30% */}
-      <VStack flex="3" h="100vh" borderLeftWidth={1}>
+      <VStack flex="3" h="100vh" borderLeftWidth={1} spacing={0} align="stretch">
+        <Box w="100%" p={4} borderBottomWidth={1} bg="gray.50">
+          <HStack justify="space-between" align="center">
+            <Text fontWeight="semibold">{t('vtuber.partnerPanelTitle')}</Text>
+            <Badge colorScheme="purple">{emotionLabel}</Badge>
+          </HStack>
+          <Text fontSize="sm" color="gray.600" mt={1}>
+            {characterInfo
+              ? t('vtuber.partnerPanelSubtitle', { name: characterInfo.name })
+              : t('vtuber.partnerPanelWaiting')}
+          </Text>
+          <HStack mt={3} spacing={2}>
+            <Badge colorScheme={connected ? 'green' : 'gray'}>
+              {connected ? t('vtuber.connectionOnline') : t('vtuber.connectionOffline')}
+            </Badge>
+            <Badge colorScheme={micOn ? 'red' : 'gray'}>
+              {micOn ? t('vtuber.micOn') : t('vtuber.micOff')}
+            </Badge>
+          </HStack>
+          {lastCompanionCue && (
+            <Box mt={3} borderLeftWidth={3} borderColor="purple.300" pl={3}>
+              <Text fontSize="xs" color="gray.500">{t('vtuber.lastCompanionCue')}</Text>
+              <Text fontSize="sm" color="gray.700" noOfLines={2}>{lastCompanionCue}</Text>
+            </Box>
+          )}
+        </Box>
+
         <Box flex={1} w="100%" overflowY="auto" p={4}>
           <VStack spacing={3} align="stretch">
             {messages.map((msg, i) => (

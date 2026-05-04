@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useEffect, useCallback, useRef, type RefObject } from 'react';
 import { LAppDelegate } from '../../WebSDK/src/lappdelegate';
+import { canvas as live2dCanvas } from '../../WebSDK/src/lappglmanager';
 
 interface UseLive2DResizeProps {
   containerRef: RefObject<HTMLDivElement>;
@@ -38,9 +39,9 @@ export const useLive2DResize = ({ containerRef }: UseLive2DResizeProps) => {
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
 
-      const delegate = LAppDelegate.getInstance();
-      if (delegate) {
-        delegate.onResize();
+      if (live2dCanvas) {
+        const delegate = LAppDelegate.getInstance();
+        delegate?.onResize();
       }
     } finally {
       isResizingRef.current = false;

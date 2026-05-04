@@ -14,7 +14,7 @@ export default function FileUpload({ onUpload, accept }: Props) {
   const [progress, setProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = useCallback(async (file: File) => {
     setUploading(true);
     setProgress(0);
     const formData = new FormData();
@@ -33,14 +33,14 @@ export default function FileUpload({ onUpload, accept }: Props) {
       setUploading(false);
       setProgress(0);
     }
-  };
+  }, [onUpload]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) uploadFile(file);
-  }, []);
+  }, [uploadFile]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();

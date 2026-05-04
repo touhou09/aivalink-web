@@ -15,7 +15,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    allowedHosts: ['aivalink.dororong.dev', 'localhost'],
+    allowedHosts: ['aivalink.dororong.dev', 'aivalink-local.dororong.dev', 'localhost'],
   },
   optimizeDeps: {
     include: ['onnxruntime-web'],

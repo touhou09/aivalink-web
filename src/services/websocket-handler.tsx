@@ -80,11 +80,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     if (!characterId) return undefined;
 
     let cancelled = false;
-    const token = localStorage.getItem('access_token') || '';
-
     const connect = async () => {
       try {
         const res = await client.get('/instances');
+        const token = localStorage.getItem('access_token') || '';
         const instances = Array.isArray(res.data) ? res.data : res.data.items || [];
         const instance = instances.find(
           (i: Record<string, unknown>) =>
