@@ -9,10 +9,9 @@ export class VTuberWebSocket {
   private reconnectAttempt = 0;
   private shouldReconnect = true;
 
-  constructor(instanceId: string, token?: string | null) {
+  constructor(instanceId: string) {
     const base = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
-    const query = token ? '?token=' + encodeURIComponent(token) : '';
-    this.url = base + '/client-ws/' + instanceId + query;
+    this.url = base + '/client-ws/' + instanceId;
   }
 
   connect() {
