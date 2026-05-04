@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import client from '../api/client';
+import client, { AUTH_SESSION_KEY } from '../api/client';
 
 export interface AuthUser {
   id: string;
@@ -16,12 +16,23 @@ interface AuthState {
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
   loadUser: () => Promise<void>;
+  completeOAuthCallback: () => Promise<void>;
   setTokens: (access: string, refresh: string) => void;
   setUser: (user: AuthUser | null) => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  isAuthenticated: !!localStorage.getItem('access_token'),
+const hasStoredSession = () =>
+  Boolean(localStorage.getItem('access_token') || localStorage.getItem(AUTH_SESSION_KEY));
+
+const markAuthenticated = () => localStorage.setItem(AUTH_SESSION_KEY, 'active');
+const clearStoredAuth = () => {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem(AUTH_SESSION_KEY);
+};
+
+export const useAuthStore = create<AuthState>((set, get) => ({
+  isAuthenticated: hasStoredSession(),
   user: null,
   loading: false,
 
@@ -30,28 +41,23 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { access_token, refresh_token } = res.data;
     localStorage.setItem('access_token', access_token);
     localStorage.setItem('refresh_token', refresh_token);
+    markAuthenticated();
     set({ isAuthenticated: true });
   },
 
   register: async (email, password, displayName) => {
-    const res = await client.post('/auth/register', {
+    await client.post('/auth/register', {
       email,
       password,
       display_name: displayName,
     });
-    const { access_token, refresh_token } = res.data;
-    localStorage.setItem('access_token', access_token);
-    localStorage.setItem('refresh_token', refresh_token);
-    set({ isAuthenticated: true });
+    await get().login(email, password);
   },
 
   logout: () => {
     const refreshToken = localStorage.getItem('refresh_token');
-    if (refreshToken) {
-      client.post('/auth/logout', { refresh_token: refreshToken }).catch(() => {});
-    }
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    client.post('/auth/logout', refreshToken ? { refresh_token: refreshToken } : {}).catch(() => {});
+    clearStoredAuth();
     set({ isAuthenticated: false, user: null });
   },
 
@@ -59,9 +65,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true });
     try {
       const res = await client.get('/users/me');
+      markAuthenticated();
       set({ user: res.data, isAuthenticated: true });
     } catch {
+      clearStoredAuth();
       set({ isAuthenticated: false, user: null });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  completeOAuthCallback: async () => {
+    set({ loading: true });
+    try {
+      const res = await client.get('/users/me');
+      markAuthenticated();
+      set({ user: res.data, isAuthenticated: true });
     } finally {
       set({ loading: false });
     }
@@ -70,10 +89,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   setTokens: (access, refresh) => {
     localStorage.setItem('access_token', access);
     localStorage.setItem('refresh_token', refresh);
+    markAuthenticated();
     set({ isAuthenticated: true });
   },
 
   setUser: (user) => {
-    set({ user, isAuthenticated: Boolean(user) || !!localStorage.getItem('access_token') });
+    set({ user, isAuthenticated: Boolean(user) || hasStoredSession() });
   },
 }));

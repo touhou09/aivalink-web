@@ -11,6 +11,8 @@ const { mockPatch } = vi.hoisted(() => ({
 }))
 
 vi.mock('../src/api/client', () => ({
+  AUTH_SESSION_KEY: 'auth_session',
+  API_BASE: 'http://localhost:8000',
   default: {
     patch: mockPatch,
   },

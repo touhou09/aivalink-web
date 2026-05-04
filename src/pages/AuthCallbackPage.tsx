@@ -1,25 +1,27 @@
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Container, Spinner, Text, VStack } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 
 export default function AuthCallbackPage() {
   const { t } = useTranslation();
-  const [params] = useSearchParams();
   const navigate = useNavigate();
-  const setTokens = useAuthStore((s) => s.setTokens);
+  const completeOAuthCallback = useAuthStore((s) => s.completeOAuthCallback);
 
   useEffect(() => {
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
-    if (accessToken && refreshToken) {
-      setTokens(accessToken, refreshToken);
-      navigate('/dashboard', { replace: true });
-    } else {
-      navigate('/login', { replace: true });
-    }
-  }, [params, navigate, setTokens]);
+    let active = true;
+    completeOAuthCallback()
+      .then(() => {
+        if (active) navigate('/dashboard', { replace: true });
+      })
+      .catch(() => {
+        if (active) navigate('/login', { replace: true });
+      });
+    return () => {
+      active = false;
+    };
+  }, [completeOAuthCallback, navigate]);
 
   return (
     <Container maxW="sm" py={20}>

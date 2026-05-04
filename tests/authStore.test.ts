@@ -4,6 +4,7 @@ import { useAuthStore } from '../src/stores/authStore'
 
 // Mock the API client to avoid real HTTP calls
 vi.mock('../src/api/client', () => ({
+  AUTH_SESSION_KEY: 'auth_session',
   default: {
     post: vi.fn().mockResolvedValue({ data: {} }),
     get: vi.fn().mockResolvedValue({ data: {} }),
@@ -22,6 +23,7 @@ describe('authStore', () => {
 
     expect(localStorage.getItem('access_token')).toBe('access-123')
     expect(localStorage.getItem('refresh_token')).toBe('refresh-456')
+    expect(localStorage.getItem('auth_session')).toBe('active')
     expect(useAuthStore.getState().isAuthenticated).toBe(true)
   })
 
@@ -35,6 +37,7 @@ describe('authStore', () => {
 
     expect(localStorage.getItem('access_token')).toBeNull()
     expect(localStorage.getItem('refresh_token')).toBeNull()
+    expect(localStorage.getItem('auth_session')).toBeNull()
     expect(useAuthStore.getState().isAuthenticated).toBe(false)
   })
 
