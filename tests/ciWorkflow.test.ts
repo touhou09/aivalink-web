@@ -12,7 +12,7 @@ describe('frontend CI workflow', () => {
     expect(workflow).toContain('actions/checkout@v6')
     expect(workflow).toContain('actions/setup-node@v6')
     expect(workflow).toContain('actions/upload-artifact@v7')
-    expect(workflow).toContain('npm ci')
+    expect(workflow).toContain('npm ci --legacy-peer-deps')
     expect(workflow).toContain('npm run lint')
     expect(workflow).toContain('npm test')
     expect(workflow).toContain('npm run build')
