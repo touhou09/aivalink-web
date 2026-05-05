@@ -1,12 +1,33 @@
 import { useEffect, useState } from 'react';
 import {
-  Box, Button, Container, FormControl, FormLabel, Heading, Input, Select, VStack, Table, Thead, Tbody, Tr, Th, Td, useToast, HStack,
-  Slider, SliderTrack, SliderFilledTrack, SliderThumb,
-  NumberInput, NumberInputField, NumberInputStepper, NumberIncrementStepper, NumberDecrementStepper,
+  Badge,
+  Box,
+  Button,
+  Container,
+  FormControl,
+  FormHelperText,
+  FormLabel,
+  Heading,
+  HStack,
+  Input,
+  Table,
+  Tbody,
+  Td,
+  Text,
+  Th,
+  Thead,
+  Tr,
+  VStack,
+  useToast,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import client from '../api/client';
+
+const DEFAULT_LLM_PROVIDER = 'openrouter';
+const DEFAULT_LLM_MODEL_NAME = 'aivalink-default-chat';
+const DEFAULT_LLM_TEMPERATURE = 0.7;
+const DEFAULT_LLM_MAX_TOKENS = 768;
 
 interface LLMConfig {
   id: string;
@@ -19,11 +40,7 @@ export default function SettingsLLMPage() {
   const { t } = useTranslation();
   const [configs, setConfigs] = useState<LLMConfig[]>([]);
   const [name, setName] = useState('');
-  const [provider, setProvider] = useState('openai');
-  const [modelName, setModelName] = useState('gpt-4o-mini');
   const [apiKey, setApiKey] = useState('');
-  const [temperature, setTemperature] = useState(0.7);
-  const [maxTokens, setMaxTokens] = useState(2048);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
@@ -31,13 +48,25 @@ export default function SettingsLLMPage() {
   const load = () => client.get('/llm-configs').then((r) => setConfigs(Array.isArray(r.data) ? r.data : r.data.items || [])).catch(() => {});
   useEffect(() => { load(); }, []);
 
+  const displayModelName = (modelName: string) => (
+    modelName === DEFAULT_LLM_MODEL_NAME ? t('settings.defaultAi') : modelName
+  );
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await client.post('/llm-configs', { name, provider, model_name: modelName, api_key: apiKey, temperature, max_tokens: maxTokens });
+      await client.post('/llm-configs', {
+        name,
+        provider: DEFAULT_LLM_PROVIDER,
+        model_name: DEFAULT_LLM_MODEL_NAME,
+        api_key: apiKey,
+        temperature: DEFAULT_LLM_TEMPERATURE,
+        max_tokens: DEFAULT_LLM_MAX_TOKENS,
+      });
       toast({ title: t('settings.created'), status: 'success', duration: 2000 });
-      setName(''); setApiKey('');
+      setName('');
+      setApiKey('');
       load();
     } catch {
       toast({ title: t('settings.error'), status: 'error', duration: 3000 });
@@ -63,56 +92,37 @@ export default function SettingsLLMPage() {
       </HStack>
 
       <Box as="form" onSubmit={handleCreate} mb={8} p={4} borderWidth={1} borderRadius="lg">
-        <VStack spacing={3}>
+        <VStack spacing={4} align="stretch">
+          <Box>
+            <Text fontSize="sm" fontWeight="semibold" mb={2}>{t('settings.aiBrain')}</Text>
+            <HStack>
+              <Badge colorScheme="purple">{t('settings.defaultAi')}</Badge>
+              <Text fontSize="sm" color="gray.600">{t('settings.defaultAiDescription')}</Text>
+            </HStack>
+          </Box>
+
           <FormControl isRequired>
             <FormLabel>{t('settings.configName')}</FormLabel>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="My GPT Config" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('settings.defaultConfigName')} />
           </FormControl>
+
           <FormControl>
-            <FormLabel>{t('settings.provider')}</FormLabel>
-            <Select value={provider} onChange={(e) => setProvider(e.target.value)}>
-              <option value="openai">OpenAI</option>
-              <option value="anthropic">Anthropic</option>
-              <option value="openrouter">OpenRouter</option>
-              <option value="ollama">Ollama (Local)</option>
-              <option value="stub">Stub (Echo)</option>
-            </Select>
+            <FormLabel>{t('settings.optionalApiKey')}</FormLabel>
+            <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-or-..." />
+            <FormHelperText>{t('settings.optionalApiKeyHint')}</FormHelperText>
           </FormControl>
-          <FormControl>
-            <FormLabel>{t('settings.model')}</FormLabel>
-            <Input value={modelName} onChange={(e) => setModelName(e.target.value)} />
-          </FormControl>
-          <FormControl>
-            <FormLabel>{t('settings.apiKey')}</FormLabel>
-            <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-..." />
-          </FormControl>
-          <FormControl>
-            <FormLabel>{t('settings.temperature')} ({temperature})</FormLabel>
-            <Slider value={temperature} min={0} max={2} step={0.1} onChange={setTemperature}>
-              <SliderTrack><SliderFilledTrack /></SliderTrack>
-              <SliderThumb />
-            </Slider>
-          </FormControl>
-          <FormControl>
-            <FormLabel>{t('settings.maxTokens')}</FormLabel>
-            <NumberInput value={maxTokens} min={100} max={8000} onChange={(_, val) => setMaxTokens(val)}>
-              <NumberInputField />
-              <NumberInputStepper>
-                <NumberIncrementStepper />
-                <NumberDecrementStepper />
-              </NumberInputStepper>
-            </NumberInput>
-          </FormControl>
+
           <Button type="submit" colorScheme="blue" w="100%" isLoading={loading}>{t('settings.addConfig')}</Button>
         </VStack>
       </Box>
 
       <Table size="sm">
-        <Thead><Tr><Th>{t('settings.configName')}</Th><Th>{t('settings.provider')}</Th><Th>{t('settings.model')}</Th><Th></Th></Tr></Thead>
+        <Thead><Tr><Th>{t('settings.configName')}</Th><Th>{t('settings.aiBrain')}</Th><Th></Th></Tr></Thead>
         <Tbody>
           {configs.map((c) => (
             <Tr key={c.id}>
-              <Td>{c.name}</Td><Td>{c.provider}</Td><Td>{c.model_name}</Td>
+              <Td>{c.name}</Td>
+              <Td>{displayModelName(c.model_name)}</Td>
               <Td><Button size="xs" colorScheme="red" variant="ghost" onClick={() => handleDelete(c.id)}>{t('common.delete')}</Button></Td>
             </Tr>
           ))}
