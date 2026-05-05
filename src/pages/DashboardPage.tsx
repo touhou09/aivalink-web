@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Avatar, Box, Button, Container, Heading, SimpleGrid, Text, VStack, Badge, HStack,
 } from '@chakra-ui/react';
@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import client from '../api/client';
 import { useAuthStore } from '../stores/authStore';
+import { buildAgentNotification, notifyAgentEvent } from '../services/agentActivityNotifications';
 
 interface Character {
   id: string;
@@ -63,6 +64,7 @@ export default function DashboardPage() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [agentStates, setAgentStates] = useState<Record<string, AgentState>>({});
   const [agentEvents, setAgentEvents] = useState<Record<string, AgentEvent[]>>({});
+  const seenAgentEventIds = useRef<Record<string, string>>({});
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
@@ -112,6 +114,12 @@ export default function DashboardPage() {
       setAgentEvents(Object.fromEntries(
         agentResults.map((result) => [result.characterId, result.events]),
       ));
+      agentResults.forEach((result) => {
+        const latest = result.events[0];
+        if (latest && !seenAgentEventIds.current[result.characterId]) {
+          seenAgentEventIds.current[result.characterId] = latest.id;
+        }
+      });
     };
 
     loadDashboard().catch(() => {});
@@ -119,6 +127,40 @@ export default function DashboardPage() {
       active = false;
     };
   }, [loadUser]);
+
+  useEffect(() => {
+    if (characters.length === 0) return undefined;
+
+    const intervalId = window.setInterval(async () => {
+      const updates = await Promise.all(characters.map(async (char) => {
+        try {
+          const response = await client.get('/agents/' + char.id + '/events?limit=3');
+          return { character: char, events: responseItems<AgentEvent>(response.data) };
+        } catch {
+          return { character: char, events: [] };
+        }
+      }));
+
+      setAgentEvents((current) => ({
+        ...current,
+        ...Object.fromEntries(updates.map((update) => [update.character.id, update.events])),
+      }));
+
+      await Promise.all(updates.map(async (update) => {
+        const latest = update.events[0];
+        const previousEventId = seenAgentEventIds.current[update.character.id] || null;
+        const notification = buildAgentNotification(update.character.name, latest, previousEventId);
+        if (latest) {
+          seenAgentEventIds.current[update.character.id] = latest.id;
+        }
+        if (notification) {
+          await notifyAgentEvent(notification).catch(() => false);
+        }
+      }));
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, [characters]);
 
   const getInstanceStatus = (charId: string) => {
     const inst = instances.find((i) => i.character_id === charId);
